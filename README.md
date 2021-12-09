@@ -1,0 +1,1 @@
+# kubectl-natty-diff
