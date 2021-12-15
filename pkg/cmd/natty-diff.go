@@ -5,9 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	"k8s.io/kubectl/pkg/cmd/diff"
@@ -17,7 +20,10 @@ import (
 	"k8s.io/utils/exec"
 )
 
-const maxRetries = 4
+const (
+	maxRetries        = 4
+	originalNameLabel = "natty-diff.hhiroshell.github.com/original-name"
+)
 
 func NewCmdNattyDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	options := NewNattyDiffOptions(streams)
@@ -57,9 +63,9 @@ type NattyDiffOptions struct {
 	fieldManager    string
 	forceConflicts  bool
 
-	selector         string
-	openAPISchema    openapi.Resources
-	discoveryClient  discovery.DiscoveryInterface
+	selector      string
+	openAPISchema openapi.Resources
+	//discoveryClient  discovery.DiscoveryInterface
 	dynamicClient    dynamic.Interface
 	dryRunVerifier   *resource.DryRunVerifier
 	cmdNamespace     string
@@ -76,6 +82,74 @@ func NewNattyDiffOptions(streams genericclioptions.IOStreams) *NattyDiffOptions 
 			IOStreams: streams,
 		},
 	}
+}
+
+// InfoObject is an implementation of the Object interface. It gets all the information from the Info object.
+type NattyDiffInfoObject struct {
+	infoObj         diff.InfoObject
+	hasOriginalName bool
+}
+
+var _ diff.Object = &NattyDiffInfoObject{}
+
+// Returns the live version of the object
+func (obj NattyDiffInfoObject) Live() runtime.Object {
+	return obj.infoObj.Live()
+}
+
+// Returns the "merged" object, as it would look like if applied or created.
+func (obj NattyDiffInfoObject) Merged() (runtime.Object, error) {
+	if obj.hasOriginalName {
+		return obj.infoObj.LocalObj, nil
+	}
+	return obj.infoObj.Merged()
+}
+
+func (obj NattyDiffInfoObject) Name() string {
+	return obj.infoObj.Name()
+}
+
+func originalName(obj runtime.Object) string {
+	labels := obj.(*unstructured.Unstructured).GetLabels()
+
+	for k, v := range labels {
+		if k == originalNameLabel {
+			return v
+		}
+	}
+	return ""
+}
+
+// Get retrieves the object from the Namespace and Name fields
+func update(info *resource.Info, name string) error {
+	gvk := info.Object.GetObjectKind().GroupVersionKind()
+	res, err := resource.NewHelper(info.Client, info.Mapping).List(info.Namespace, info.ResourceVersion, &metav1.ListOptions{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       gvk.Kind,
+			APIVersion: gvk.GroupVersion().String(),
+		},
+		LabelSelector: originalNameLabel + "=" + name,
+	})
+	if err != nil {
+		return err
+	}
+
+	list := res.(*unstructured.UnstructuredList)
+	if len(list.Items) == 0 {
+		return errors.NewNotFound(schema.GroupResource{
+			Group:    gvk.Group,
+			Resource: gvk.Kind,
+		}, name)
+	}
+	if len(list.Items) > 1 {
+		return fmt.Errorf("more than two objects have same original-name label")
+	}
+
+	item := list.Items[0]
+	info.Object = item.DeepCopyObject()
+	info.Name = item.GetName()
+	info.ResourceVersion = item.GetResourceVersion()
+	return nil
 }
 
 func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
@@ -100,10 +174,10 @@ func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command)
 		}
 	}
 
-	o.discoveryClient, err = factory.ToDiscoveryClient()
-	if err != nil {
-		return err
-	}
+	//o.discoveryClient, err = factory.ToDiscoveryClient()
+	//if err != nil {
+	//	return err
+	//}
 
 	o.dynamicClient, err = factory.DynamicClient()
 	if err != nil {
@@ -151,12 +225,21 @@ func (o *NattyDiffOptions) Run() error {
 		}
 
 		local := info.Object.DeepCopyObject()
+
 		for i := 1; i <= maxRetries; i++ {
-			if err = info.Get(); err != nil {
+			hasOriginalName := false
+			if on := originalName(local); len(on) > 0 {
+				err = update(info, on)
+				hasOriginalName = true
+			} else {
+				err = info.Get()
+			}
+			if err != nil {
 				if !errors.IsNotFound(err) {
 					return err
+				} else {
+					info.Object = nil
 				}
-				info.Object = nil
 			}
 
 			force := i == maxRetries
@@ -168,16 +251,19 @@ func (o *NattyDiffOptions) Run() error {
 					info.Name,
 				)
 			}
-			obj := diff.InfoObject{
-				LocalObj:        local,
-				Info:            info,
-				Encoder:         scheme.DefaultJSONEncoder(),
-				OpenAPI:         o.openAPISchema,
-				Force:           force,
-				ServerSideApply: o.serverSideApply,
-				FieldManager:    o.fieldManager,
-				ForceConflicts:  o.forceConflicts,
-				IOStreams:       o.diffProgram.IOStreams,
+			obj := NattyDiffInfoObject{
+				infoObj: diff.InfoObject{
+					LocalObj:        local,
+					Info:            info,
+					Encoder:         scheme.DefaultJSONEncoder(),
+					OpenAPI:         o.openAPISchema,
+					Force:           force,
+					ServerSideApply: o.serverSideApply,
+					FieldManager:    o.fieldManager,
+					ForceConflicts:  o.forceConflicts,
+					IOStreams:       o.diffProgram.IOStreams,
+				},
+				hasOriginalName: hasOriginalName,
 			}
 
 			err = differ.Diff(obj, printer)
