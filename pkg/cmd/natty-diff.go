@@ -63,9 +63,8 @@ type NattyDiffOptions struct {
 	fieldManager    string
 	forceConflicts  bool
 
-	selector      string
-	openAPISchema openapi.Resources
-	//discoveryClient  discovery.DiscoveryInterface
+	selector         string
+	openAPISchema    openapi.Resources
 	dynamicClient    dynamic.Interface
 	dryRunVerifier   *resource.DryRunVerifier
 	cmdNamespace     string
@@ -173,11 +172,6 @@ func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command)
 			return err
 		}
 	}
-
-	//o.discoveryClient, err = factory.ToDiscoveryClient()
-	//if err != nil {
-	//	return err
-	//}
 
 	o.dynamicClient, err = factory.DynamicClient()
 	if err != nil {
