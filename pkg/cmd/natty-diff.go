@@ -151,6 +151,14 @@ func update(info *resource.Info, name string) error {
 	return nil
 }
 
+func isNotFound(err error) bool {
+	return err != nil && errors.IsNotFound(err)
+}
+
+func isConflict(err error) bool {
+	return err != nil && errors.IsConflict(err)
+}
+
 func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
 	var err error
 
@@ -228,12 +236,10 @@ func (o *NattyDiffOptions) Run() error {
 			} else {
 				err = info.Get()
 			}
-			if err != nil {
-				if !errors.IsNotFound(err) {
-					return err
-				} else {
-					info.Object = nil
-				}
+			if isNotFound(err) {
+				info.Object = nil
+			} else if err != nil {
+				return err
 			}
 
 			force := i == maxRetries
@@ -261,13 +267,9 @@ func (o *NattyDiffOptions) Run() error {
 			}
 
 			err = differ.Diff(obj, printer)
-			isConflict := func(err error) bool {
-				return err != nil && errors.IsConflict(err)
-			}
 			if !isConflict(err) {
 				break
 			}
-
 		}
 
 		apply.WarnIfDeleting(info.Object, o.diffProgram.ErrOut)
