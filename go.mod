@@ -1,4 +1,4 @@
-module hhiroshell.github.com/kubectl-natty-diff
+module hhiroshell.github.com/kubectl-yourname-diff
 
 go 1.17
 

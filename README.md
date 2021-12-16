@@ -1,1 +1,1 @@
-# kubectl-natty-diff
+# kubectl-yourname-diff

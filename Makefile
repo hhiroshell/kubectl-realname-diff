@@ -1,10 +1,10 @@
 SOURCES := $(shell find . -name '*.go')
-BINARY := kubectl-natty_diff
+BINARY := kubectl-yourname_diff
 
-build: kubectl-natty_diff
+build: kubectl-yourname_diff
 
 $(BINARY): $(SOURCES)
-	GO111MODULE=on CGO_ENABLED=0 go build -o $(BINARY) ./cmd/kubectl-natty-diff.go
+	GO111MODULE=on CGO_ENABLED=0 go build -o $(BINARY) ./cmd/kubectl-yourname-diff.go
 
 .PHONY: clean
 clean:

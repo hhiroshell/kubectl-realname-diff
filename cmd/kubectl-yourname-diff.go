@@ -6,13 +6,13 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"hhiroshell.github.com/kubectl-natty-diff/pkg/cmd"
+	"hhiroshell.github.com/kubectl-yourname-diff/pkg/cmd"
 )
 
 func main() {
-	pflag.CommandLine = pflag.NewFlagSet("kubectl-natty-diff", pflag.ExitOnError)
+	pflag.CommandLine = pflag.NewFlagSet("kubectl-yourname-diff", pflag.ExitOnError)
 
-	root := cmd.NewCmdNattyDiff(genericclioptions.IOStreams{
+	root := cmd.NewCmdYournameDiff(genericclioptions.IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,
