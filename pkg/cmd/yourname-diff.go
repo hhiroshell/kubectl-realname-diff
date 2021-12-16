@@ -22,11 +22,11 @@ import (
 
 const (
 	maxRetries        = 4
-	originalNameLabel = "natty-diff.hhiroshell.github.com/original-name"
+	originalNameLabel = "yourname-diff/name"
 )
 
-func NewCmdNattyDiff(streams genericclioptions.IOStreams) *cobra.Command {
-	options := NewNattyDiffOptions(streams)
+func NewCmdYournameDiff(streams genericclioptions.IOStreams) *cobra.Command {
+	options := NewYournameDiffOptions(streams)
 
 	configFlags := genericclioptions.NewConfigFlags(true)
 	factory := cmdutil.NewFactory(configFlags)
@@ -56,7 +56,7 @@ func NewCmdNattyDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-type NattyDiffOptions struct {
+type YournameDiffOptions struct {
 	filenameOptions resource.FilenameOptions
 
 	serverSideApply bool
@@ -74,8 +74,8 @@ type NattyDiffOptions struct {
 	diffProgram *diff.DiffProgram
 }
 
-func NewNattyDiffOptions(streams genericclioptions.IOStreams) *NattyDiffOptions {
-	return &NattyDiffOptions{
+func NewYournameDiffOptions(streams genericclioptions.IOStreams) *YournameDiffOptions {
+	return &YournameDiffOptions{
 		diffProgram: &diff.DiffProgram{
 			Exec:      exec.New(),
 			IOStreams: streams,
@@ -84,27 +84,27 @@ func NewNattyDiffOptions(streams genericclioptions.IOStreams) *NattyDiffOptions 
 }
 
 // InfoObject is an implementation of the Object interface. It gets all the information from the Info object.
-type NattyDiffInfoObject struct {
+type YournameDiffInfoObject struct {
 	infoObj         diff.InfoObject
 	hasOriginalName bool
 }
 
-var _ diff.Object = &NattyDiffInfoObject{}
+var _ diff.Object = &YournameDiffInfoObject{}
 
 // Returns the live version of the object
-func (obj NattyDiffInfoObject) Live() runtime.Object {
+func (obj YournameDiffInfoObject) Live() runtime.Object {
 	return obj.infoObj.Live()
 }
 
 // Returns the "merged" object, as it would look like if applied or created.
-func (obj NattyDiffInfoObject) Merged() (runtime.Object, error) {
+func (obj YournameDiffInfoObject) Merged() (runtime.Object, error) {
 	if obj.hasOriginalName {
 		return obj.infoObj.LocalObj, nil
 	}
 	return obj.infoObj.Merged()
 }
 
-func (obj NattyDiffInfoObject) Name() string {
+func (obj YournameDiffInfoObject) Name() string {
 	return obj.infoObj.Name()
 }
 
@@ -159,7 +159,7 @@ func isConflict(err error) bool {
 	return err != nil && errors.IsConflict(err)
 }
 
-func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
+func (o *YournameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
 	var err error
 
 	err = o.filenameOptions.RequireFilenameOrKustomize()
@@ -197,7 +197,7 @@ func (o *NattyDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command)
 	return nil
 }
 
-func (o *NattyDiffOptions) Run() error {
+func (o *YournameDiffOptions) Run() error {
 	differ, err := diff.NewDiffer("LIVE", "MERGED")
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func (o *NattyDiffOptions) Run() error {
 					info.Name,
 				)
 			}
-			obj := NattyDiffInfoObject{
+			obj := YournameDiffInfoObject{
 				infoObj: diff.InfoObject{
 					LocalObj:        local,
 					Info:            info,
