@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,14 +37,15 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 		Short:        "",
 		Example:      "",
 		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := options.Complete(factory, cmd); err != nil {
-				return err
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdutil.CheckDiffErr(options.Complete(factory, cmd))
+
 			if err := options.Run(); err != nil {
-				return err
+				if exitErr := diffError(err); exitErr != nil {
+					os.Exit(exitErr.ExitStatus())
+				}
+				cmdutil.CheckDiffErr(err)
 			}
-			return nil
 		},
 	}
 
@@ -54,6 +56,15 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	cmdutil.AddFieldManagerFlagVar(cmd, &options.fieldManager, apply.FieldManagerClientSideApply)
 
 	return cmd
+}
+
+// diffError returns the ExitError if the status code is less than 1,
+// nil otherwise.
+func diffError(err error) exec.ExitError {
+	if err, ok := err.(exec.ExitError); ok && err.ExitStatus() <= 1 {
+		return err
+	}
+	return nil
 }
 
 type RealnameDiffOptions struct {
