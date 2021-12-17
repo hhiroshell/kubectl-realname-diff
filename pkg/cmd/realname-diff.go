@@ -39,6 +39,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckDiffErr(options.Complete(factory, cmd))
+			cmdutil.CheckDiffErr(validateArgs(cmd, args))
 
 			if err := options.Run(); err != nil {
 				if exitErr := diffError(err); exitErr != nil {
@@ -56,6 +57,13 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	cmdutil.AddFieldManagerFlagVar(cmd, &options.fieldManager, apply.FieldManagerClientSideApply)
 
 	return cmd
+}
+
+func validateArgs(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
+		return cmdutil.UsageErrorf(cmd, "Unexpected args: %v", args)
+	}
+	return nil
 }
 
 // diffError returns the ExitError if the status code is less than 1,
