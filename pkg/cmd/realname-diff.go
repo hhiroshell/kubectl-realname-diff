@@ -18,7 +18,26 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/openapi"
+	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/utils/exec"
+)
+
+var (
+	diffLong = templates.LongDesc(`
+		If realname is specified in the label, diff between resources with the same label.
+		Other than that, it works just like normal kubectl diff.
+
+		This kubectl plugin assumes that you want to create ConfigMap, Secret with hash
+		suffix in Kustomize.
+		By specifying the real name without the hash suffix as a label, you can compare
+		the old and new resources regardless of the hash value.`)
+
+	diffExample = templates.Examples(`
+		# Diff resources included in the result of kustomize build
+		kustomize build ./example | kubectl realname-diff -f -
+
+		# Also you can use kubectl's built-in kustomize
+		kubectl realname-diff -k ./example`)
 )
 
 const (
@@ -33,10 +52,11 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	factory := cmdutil.NewFactory(configFlags)
 
 	cmd := &cobra.Command{
-		Use:          "realname-diff -f FILENAME",
-		Short:        "",
-		Example:      "",
-		SilenceUsage: true,
+		Use:                   "realname-diff -f FILENAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "Diff between resources with the same realname label",
+		Long:                  diffLong,
+		Example:               diffExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckDiffErr(options.Complete(factory, cmd))
 			cmdutil.CheckDiffErr(validateArgs(cmd, args))
