@@ -1,1 +1,1 @@
-# kubectl-yourname-diff
+# kubectl-realname-diff

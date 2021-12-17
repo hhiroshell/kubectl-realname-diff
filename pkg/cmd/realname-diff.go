@@ -21,12 +21,12 @@ import (
 )
 
 const (
-	maxRetries        = 4
-	originalNameLabel = "yourname-diff/name"
+	maxRetries    = 4
+	realNameLabel = "realname-diff/realname"
 )
 
-func NewCmdYournameDiff(streams genericclioptions.IOStreams) *cobra.Command {
-	options := NewYournameDiffOptions(streams)
+func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
+	options := NewRealnameDiffOptions(streams)
 
 	configFlags := genericclioptions.NewConfigFlags(true)
 	factory := cmdutil.NewFactory(configFlags)
@@ -56,7 +56,7 @@ func NewCmdYournameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-type YournameDiffOptions struct {
+type RealnameDiffOptions struct {
 	filenameOptions resource.FilenameOptions
 
 	serverSideApply bool
@@ -74,8 +74,8 @@ type YournameDiffOptions struct {
 	diffProgram *diff.DiffProgram
 }
 
-func NewYournameDiffOptions(streams genericclioptions.IOStreams) *YournameDiffOptions {
-	return &YournameDiffOptions{
+func NewRealnameDiffOptions(streams genericclioptions.IOStreams) *RealnameDiffOptions {
+	return &RealnameDiffOptions{
 		diffProgram: &diff.DiffProgram{
 			Exec:      exec.New(),
 			IOStreams: streams,
@@ -84,35 +84,35 @@ func NewYournameDiffOptions(streams genericclioptions.IOStreams) *YournameDiffOp
 }
 
 // InfoObject is an implementation of the Object interface. It gets all the information from the Info object.
-type YournameDiffInfoObject struct {
-	infoObj         diff.InfoObject
-	hasOriginalName bool
+type RealnameDiffInfoObject struct {
+	infoObj     diff.InfoObject
+	hasRealName bool
 }
 
-var _ diff.Object = &YournameDiffInfoObject{}
+var _ diff.Object = &RealnameDiffInfoObject{}
 
 // Returns the live version of the object
-func (obj YournameDiffInfoObject) Live() runtime.Object {
+func (obj RealnameDiffInfoObject) Live() runtime.Object {
 	return obj.infoObj.Live()
 }
 
 // Returns the "merged" object, as it would look like if applied or created.
-func (obj YournameDiffInfoObject) Merged() (runtime.Object, error) {
-	if obj.hasOriginalName {
+func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
+	if obj.hasRealName {
 		return obj.infoObj.LocalObj, nil
 	}
 	return obj.infoObj.Merged()
 }
 
-func (obj YournameDiffInfoObject) Name() string {
+func (obj RealnameDiffInfoObject) Name() string {
 	return obj.infoObj.Name()
 }
 
-func originalName(obj runtime.Object) string {
+func realName(obj runtime.Object) string {
 	labels := obj.(*unstructured.Unstructured).GetLabels()
 
 	for k, v := range labels {
-		if k == originalNameLabel {
+		if k == realNameLabel {
 			return v
 		}
 	}
@@ -127,7 +127,7 @@ func update(info *resource.Info, name string) error {
 			Kind:       gvk.Kind,
 			APIVersion: gvk.GroupVersion().String(),
 		},
-		LabelSelector: originalNameLabel + "=" + name,
+		LabelSelector: realNameLabel + "=" + name,
 	})
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func update(info *resource.Info, name string) error {
 		}, name)
 	}
 	if len(list.Items) > 1 {
-		return fmt.Errorf("more than two objects have same original-name label")
+		return fmt.Errorf("more than two objects have same realname label")
 	}
 
 	item := list.Items[0]
@@ -159,7 +159,7 @@ func isConflict(err error) bool {
 	return err != nil && errors.IsConflict(err)
 }
 
-func (o *YournameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
+func (o *RealnameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Command) error {
 	var err error
 
 	err = o.filenameOptions.RequireFilenameOrKustomize()
@@ -197,7 +197,7 @@ func (o *YournameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Comma
 	return nil
 }
 
-func (o *YournameDiffOptions) Run() error {
+func (o *RealnameDiffOptions) Run() error {
 	differ, err := diff.NewDiffer("LIVE", "MERGED")
 	if err != nil {
 		return err
@@ -230,7 +230,7 @@ func (o *YournameDiffOptions) Run() error {
 
 		for i := 1; i <= maxRetries; i++ {
 			hasOriginalName := false
-			if on := originalName(local); len(on) > 0 {
+			if on := realName(local); len(on) > 0 {
 				err = update(info, on)
 				hasOriginalName = true
 			} else {
@@ -251,7 +251,7 @@ func (o *YournameDiffOptions) Run() error {
 					info.Name,
 				)
 			}
-			obj := YournameDiffInfoObject{
+			obj := RealnameDiffInfoObject{
 				infoObj: diff.InfoObject{
 					LocalObj:        local,
 					Info:            info,
@@ -263,7 +263,7 @@ func (o *YournameDiffOptions) Run() error {
 					ForceConflicts:  o.forceConflicts,
 					IOStreams:       o.diffProgram.IOStreams,
 				},
-				hasOriginalName: hasOriginalName,
+				hasRealName: hasOriginalName,
 			}
 
 			err = differ.Diff(obj, printer)
