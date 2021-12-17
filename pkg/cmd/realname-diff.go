@@ -99,8 +99,17 @@ func (obj RealnameDiffInfoObject) Live() runtime.Object {
 // Returns the "merged" object, as it would look like if applied or created.
 func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
 	if obj.hasRealName {
-		return obj.infoObj.LocalObj, nil
+		helper := resource.NewHelper(obj.infoObj.Info.Client, obj.infoObj.Info.Mapping).
+			DryRun(true).
+			WithFieldManager(obj.infoObj.FieldManager)
+		return helper.CreateWithOptions(
+			obj.infoObj.Info.Namespace,
+			true,
+			obj.infoObj.LocalObj,
+			&metav1.CreateOptions{},
+		)
 	}
+
 	return obj.infoObj.Merged()
 }
 
