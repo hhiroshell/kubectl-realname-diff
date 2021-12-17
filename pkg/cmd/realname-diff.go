@@ -32,7 +32,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	factory := cmdutil.NewFactory(configFlags)
 
 	cmd := &cobra.Command{
-		Use:          "",
+		Use:          "realname-diff -f FILENAME",
 		Short:        "",
 		Example:      "",
 		SilenceUsage: true,
@@ -83,7 +83,8 @@ func NewRealnameDiffOptions(streams genericclioptions.IOStreams) *RealnameDiffOp
 	}
 }
 
-// InfoObject is an implementation of the Object interface. It gets all the information from the Info object.
+// RealnameDiffInfoObject is an implementation of the diff.Object interface.
+// It has all the information from the diff.InfoObject and whether the object has a real name label.
 type RealnameDiffInfoObject struct {
 	infoObj     diff.InfoObject
 	hasRealName bool
@@ -91,13 +92,14 @@ type RealnameDiffInfoObject struct {
 
 var _ diff.Object = &RealnameDiffInfoObject{}
 
-// Returns the live version of the object
+// Live Returns the live version of the object
 func (obj RealnameDiffInfoObject) Live() runtime.Object {
 	return obj.infoObj.Live()
 }
 
-// Returns the "merged" object, as it would look like if applied or created.
+// Merged returns the "merged" object, as it would look like if applied or created.
 func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
+	// Updating an object with hush suffixed name will be done as a creation
 	if obj.hasRealName {
 		helper := resource.NewHelper(obj.infoObj.Info.Client, obj.infoObj.Info.Mapping).
 			DryRun(true).
