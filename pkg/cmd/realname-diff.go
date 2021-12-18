@@ -54,7 +54,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	factory := cmdutil.NewFactory(configFlags)
 
 	cmd := &cobra.Command{
-		Use:                   "realname-diff -f FILENAME",
+		Use:                   "kubectl realname-diff -f FILENAME",
 		DisableFlagsInUseLine: true,
 		Short:                 "Diff between resources with the same realname label",
 		Long:                  diffLong,
