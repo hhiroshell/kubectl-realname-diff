@@ -20,6 +20,8 @@ import (
 	"k8s.io/kubectl/pkg/util/openapi"
 	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/utils/exec"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 var (
