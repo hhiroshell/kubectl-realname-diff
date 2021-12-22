@@ -18,28 +18,32 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/openapi"
-	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/utils/exec"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 var (
-	diffLong = templates.LongDesc(`
-		If realname is specified in the label, diff between resources with the same label.
-		Other than that, it works just like normal kubectl diff.
+	diffLong = `This is a variation of the kubectl diff command.
 
-		This kubectl plugin assumes that you want to create ConfigMap, Secret with hash
-		suffix in Kustomize.
-		By specifying the real name without the hash suffix as a label, you can compare
-		the old and new resources regardless of the hash value.`)
+Normally, kubectl realname-diff works the same as kubectl diff, but if "real name" is
+specified with the label, local and live resources with the same label will be compared.
 
-	diffExample = templates.Examples(`
-		# Diff resources included in the result of kustomize build
-		kustomize build ./example | kubectl realname-diff -f -
+This is especially beneficial if you have hash suffixed ConfigMaps or Secrets with the
+Kustomize. In case of kubectl diff, local and live resources with hash suffixed name are
+considered as irrelevant. So you will not be able to get any results comparing them.
 
-		# Also you can use kubectl's built-in kustomize
-		kubectl realname-diff -k ./example`)
+However, with realname-diff, you can compare the resources with hash suffixed name by
+specifying the comparison target with "real name" labels.`
+
+	diffExample = `  # Make sure you have already labeled the resources with "realname-diff/realname: [real name]"
+  # For a complete example, see https://github.com/hhiroshell/kubectl-realname-diff/tree/main/example 
+
+  # Diff resources included in the result of kustomize build
+  kustomize build ./example | kubectl realname-diff -f -
+
+  # Also you can use kubectl's built-in kustomize
+  kubectl realname-diff -k ./example`
 )
 
 const (
@@ -56,7 +60,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "kubectl realname-diff -f FILENAME",
 		DisableFlagsInUseLine: true,
-		Short:                 "Diff between resources with the same realname label",
+		Short:                 "Diff live and local resources ignoring Kustomize hash-suffixes.",
 		Long:                  diffLong,
 		Example:               diffExample,
 		Run: func(cmd *cobra.Command, args []string) {
