@@ -1,11 +1,28 @@
-SOURCES := $(shell find . -name '*.go')
-BINARY := kubectl-realname_diff
+# This Makefile assumed to be used for local development.
+GO ?= go
+STATICCHECK ?= staticcheck
+DIST_DIR := dist
 
-build: kubectl-realname_diff
+.PHONY: build
+build:
+	$(GO) build -o $(DIST_DIR)/kubectl-realname_diff cmd/kubectl-realname_diff/main.go
 
-$(BINARY): $(SOURCES)
-	GO111MODULE=on CGO_ENABLED=0 go build -o $(BINARY) ./cmd/kubectl-realname-diff.go
+.PHONY: test
+test: vet fmt lint
+	$(GO) test ./...
+
+.PHONY: vet
+vet:
+	$(GO) vet ./...
+
+.PHONY: fmt
+fmt:
+	$(GO) fmt ./...
+
+.PHONY: lint
+lint:
+	$(STATICCHECK) ./...
 
 .PHONY: clean
 clean:
-	rm $(BINARY)
+	rm -rf $(DIST_DIR)
