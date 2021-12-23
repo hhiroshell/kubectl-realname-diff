@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"hhiroshell.github.com/kubectl-realname-diff/pkg/cmd"
+	"github.com/hhiroshell/kubectl-realname-diff/pkg/cmd"
 )
 
 func main() {
