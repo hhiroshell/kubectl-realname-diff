@@ -1,4 +1,4 @@
-module hhiroshell.github.com/kubectl-realname-diff
+module github.com/hhiroshell/kubectl-realname-diff
 
 go 1.17
 
