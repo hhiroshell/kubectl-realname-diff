@@ -117,7 +117,7 @@ For a complete example, see the [example directory](./example).
 Use go install as follows:
 
 ```
-$ go install github.com/hhiroshell/cmd/kubectl-realname_diff@latest
+$ go install github.com/hhiroshell/kubectl-realname-diff/cmd/kubectl-realname_diff@latest
 ```
 
 ## License
