@@ -113,6 +113,13 @@ diff -u -N /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/LIVE-116798495/v1.Co
 
 For a complete example, see the [example directory](./example). 
 
+## Installation
+Use go install as follows:
+
+```
+$ go install github.com/hhiroshell/cmd/kubectl-realname_diff@latest
+```
+
 ## License
 Kubectl Real Name Diff is licensed under the Apache License 2.0, and includes works
 distributed under same one.
