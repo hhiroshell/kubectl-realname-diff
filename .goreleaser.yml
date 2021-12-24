@@ -29,6 +29,8 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+release:
+  prerelease: auto
 krews:
   - name: realname-diff
     homepage: https://github.com/hhiroshell/kubectl-realname-diff
