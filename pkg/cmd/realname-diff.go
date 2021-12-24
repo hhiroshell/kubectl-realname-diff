@@ -26,11 +26,13 @@ import (
 var (
 	diffLong = `Diffs live and local resources ignoring Kustomize hash-suffixes.
 
-Normally, "kubectl realname-diff" works the same as "kubectl diff", but if you set
-"real name" as a label, local and live resources with the same label will be compared.`
+Normally, "kubectl realname-diff" works the same as "kubectl diff", but if you
+set "real name" as a label, local and live resources with the same label will be
+compared.`
 
-	diffExample = `  # Make sure you have already labeled the resources with "realname-diff/realname: [real name]"
-  # For a complete example, see https://github.com/hhiroshell/kubectl-realname-diff/tree/main/example 
+	diffExample = `  # Make sure you have already labeled the resources with
+  # "realname-diff/realname: [real name]". For a complete example, see:
+  # https://github.com/hhiroshell/kubectl-realname-diff/tree/main/example 
 
   # Diff resources included in the result of kustomize build
   kustomize build ./example | kubectl realname-diff -f -

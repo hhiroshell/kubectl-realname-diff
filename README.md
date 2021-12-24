@@ -2,23 +2,25 @@
 
 ![CI](https://github.com/hhiroshell/kubectl-realname-diff/actions/workflows/ci.yaml/badge.svg)
 
-A kubectl plugin that diffs live and local resources ignoring Kustomize hash-suffixes.
+A kubectl plugin that diffs live and local resources ignoring Kustomize
+hash-suffixes.
 
 ## What's this ?
-Normally, `kubectl realname-diff` works the same as `kubectl diff`, but if you set
-"real name" as a label, local and live resources with the same label will be compared.
+Normally, `kubectl realname-diff` works the same as `kubectl diff`, but if you
+set "real name" as a label, local and live resources with the same label will be
+compared.
 
-This is especially beneficial if you use the Kustomize and enable the hash suffixed
-ConfigMap/Secret name. In case of `kubectl diff`, local and live resources with hash
-suffixed name are considered as irrelevant. So you will not be able to get any results
-comparing them.
+This is especially beneficial if you use the Kustomize and enable the hash
+suffixed ConfigMap/Secret name. In case of `kubectl diff`, local and live
+resources with hash suffixed name are considered as irrelevant. So you will not
+be able to get any results comparing them.
 
-However, with realname-diff, you can compare the resources with hash suffixed name by
-specifying the comparison target with "real name" labels.
+However, with realname-diff, you can compare the resources with hash suffixed
+name by specifying the comparison target with "real name" labels.
 
 ## Usage
-First, you have set the label `realname-diff/realname: [real name]` to the resources
-you want to diff ignoring difference of `{.metadata.name}`.
+First, you have set the label `realname-diff/realname: [real name]` to the
+resources you want to diff ignoring difference of `{.metadata.name}`.
 
 In Kustomize, you can set the label in ConfigMap/Secret Generator fields.
 
@@ -58,8 +60,8 @@ $ echo "# test" >> ./example/conf/nginx.conf
 $ kustomize build -f ./example | kubectl realname-diff -f -
 ```
 
-You can see the diff result comparing contents in the ConfigMap. The local ConfigMap
-is not treated as new one.
+You can see the diff result comparing contents in the ConfigMap. The local
+ConfigMap is not treated as new one.
 
 ```diff
 diff -u -N /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/LIVE-116798495/apps.v1.Deployment.default.nginx /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/MERGED-2431241138/apps.v1.Deployment.default.nginx
@@ -121,5 +123,5 @@ $ go install github.com/hhiroshell/kubectl-realname-diff/cmd/kubectl-realname_di
 ```
 
 ## License
-Kubectl Real Name Diff is licensed under the Apache License 2.0, and includes works
-distributed under same one.
+Kubectl Real Name Diff is licensed under the Apache License 2.0, and includes
+works distributed under same one.
