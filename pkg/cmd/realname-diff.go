@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -126,33 +127,53 @@ func NewRealnameDiffOptions(streams genericclioptions.IOStreams) *RealnameDiffOp
 // RealnameDiffInfoObject is an implementation of the diff.Object interface.
 // It has all the information from the diff.InfoObject and whether the object has a real name label.
 type RealnameDiffInfoObject struct {
-	infoObj     diff.InfoObject
-	hasRealName bool
+	infoObj diff.InfoObject
 }
 
 var _ diff.Object = &RealnameDiffInfoObject{}
 
 // Live Returns the live version of the object
 func (obj RealnameDiffInfoObject) Live() runtime.Object {
-	return obj.infoObj.Live()
+	if !obj.nameWillBeChanged() {
+		return obj.infoObj.Live()
+	}
+
+	unstructured := obj.infoObj.Live().(*unstructured.Unstructured)
+	if unstructured.GetKind() == "Secret" {
+		annotations := unstructured.GetAnnotations()
+		if _, ok := annotations["kubectl.kubernetes.io/last-applied-configuration"]; ok {
+			annotations["kubectl.kubernetes.io/last-applied-configuration"] = "***"
+		}
+		unstructured.SetAnnotations(annotations)
+	}
+	return unstructured
 }
 
 // Merged returns the "merged" object, as it would look like if applied or created.
 func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
-	// Updating an object with hush suffixed name will be done as a creation
-	if obj.hasRealName {
-		helper := resource.NewHelper(obj.infoObj.Info.Client, obj.infoObj.Info.Mapping).
-			DryRun(true).
-			WithFieldManager(obj.infoObj.FieldManager)
-		return helper.CreateWithOptions(
-			obj.infoObj.Info.Namespace,
-			true,
-			obj.infoObj.LocalObj,
-			&metav1.CreateOptions{},
-		)
+	if !obj.nameWillBeChanged() {
+		return obj.infoObj.Merged()
 	}
 
-	return obj.infoObj.Merged()
+	helper := resource.NewHelper(obj.infoObj.Info.Client, obj.infoObj.Info.Mapping).
+		DryRun(true).
+		WithFieldManager(obj.infoObj.FieldManager)
+	return helper.CreateWithOptions(
+		obj.infoObj.Info.Namespace,
+		true,
+		obj.infoObj.LocalObj,
+		&metav1.CreateOptions{},
+	)
+}
+
+func (obj RealnameDiffInfoObject) nameWillBeChanged() bool {
+	if obj.infoObj.Live() == nil {
+		return false
+	}
+
+	live := obj.infoObj.Live().(*unstructured.Unstructured).GetName()
+	local := obj.infoObj.LocalObj.(*unstructured.Unstructured).GetName()
+	return local != live
 }
 
 func (obj RealnameDiffInfoObject) Name() string {
@@ -170,8 +191,9 @@ func realName(obj runtime.Object) string {
 	return ""
 }
 
-// Get retrieves the object from the Namespace and Name fields
-func update(info *resource.Info, name string) error {
+// getWithRealName retrieves the object from the "realname-diff/realname" label.
+// If the object is not found, it will try to retrieve it from the name.
+func getWithRealName(info *resource.Info, name string) error {
 	gvk := info.Object.GetObjectKind().GroupVersionKind()
 	res, err := resource.NewHelper(info.Client, info.Mapping).List(info.Namespace, info.ResourceVersion, &metav1.ListOptions{
 		TypeMeta: metav1.TypeMeta{
@@ -183,22 +205,30 @@ func update(info *resource.Info, name string) error {
 	if err != nil {
 		return err
 	}
-
 	list := res.(*unstructured.UnstructuredList)
-	if len(list.Items) == 0 {
-		return errors.NewNotFound(schema.GroupResource{
-			Group:    gvk.Group,
-			Resource: gvk.Kind,
-		}, name)
-	}
 	if len(list.Items) > 1 {
 		return fmt.Errorf("more than two objects have same realname label")
 	}
 
-	item := list.Items[0]
-	info.Object = item.DeepCopyObject()
-	info.Name = item.GetName()
-	info.ResourceVersion = item.GetResourceVersion()
+	if len(list.Items) == 1 {
+		unstructured := list.Items[0]
+		info.Object = unstructured.DeepCopyObject()
+		info.ResourceVersion = unstructured.GetResourceVersion()
+	} else if len(list.Items) == 0 {
+		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, name)
+		if isNotFound(err) {
+			return errors.NewNotFound(schema.GroupResource{
+				Group:    gvk.Group,
+				Resource: gvk.Kind,
+			}, name)
+		}
+		info.Object = obj
+		info.ResourceVersion, err = meta.NewAccessor().ResourceVersion(obj)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -280,10 +310,8 @@ func (o *RealnameDiffOptions) Run() error {
 		local := info.Object.DeepCopyObject()
 
 		for i := 1; i <= maxRetries; i++ {
-			hasOriginalName := false
 			if on := realName(local); len(on) > 0 {
-				err = update(info, on)
-				hasOriginalName = true
+				err = getWithRealName(info, on)
 			} else {
 				err = info.Get()
 			}
@@ -314,7 +342,6 @@ func (o *RealnameDiffOptions) Run() error {
 					ForceConflicts:  o.forceConflicts,
 					IOStreams:       o.diffProgram.IOStreams,
 				},
-				hasRealName: hasOriginalName,
 			}
 
 			err = differ.Diff(obj, printer)
