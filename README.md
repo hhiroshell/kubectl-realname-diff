@@ -6,17 +6,17 @@ A kubectl plugin that diffs live and local resources ignoring Kustomize
 hash-suffixes.
 
 ## What's this ?
-Normally, `kubectl realname-diff` works the same as `kubectl diff`, but if you
-set "real name" as a label, local and live resources with the same label will be
+`kubectl realname-diff` works the same as `kubectl diff`, but if you set "real
+name" as a label, local and live resources with the same label will be
 compared.
 
-This is especially beneficial if you use the Kustomize and enable the hash
-suffixed ConfigMap/Secret name. In case of `kubectl diff`, local and live
+This is especially beneficial if you use the Kustomize and enable hash
+suffixing ConfigMap/Secret names. In case of `kubectl diff`, local and live
 resources with hash suffixed name are considered as irrelevant. So you will not
 be able to get any results comparing them.
 
-However, with realname-diff, you can compare the resources with hash suffixed
-name by specifying the comparison target with "real name" labels.
+With realname-diff, you can compare the resources with hash suffixed name by
+specifying the comparison target with "real name" labels.
 
 ## Usage
 First, you have set the label `realname-diff/realname: [real name]` to the
@@ -116,10 +116,21 @@ diff -u -N /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/LIVE-116798495/v1.Co
 For a complete example, see the [example directory](./example). 
 
 ## Installation
+
+### by `go install`
 Use go install as follows:
 
-```
+```bash
 $ go install github.com/hhiroshell/kubectl-realname-diff/cmd/kubectl-realname_diff@latest
+```
+
+### as a kubectl plugin
+Make sure the [krew](https://github.com/kubernetes-sigs/krew) is already installed.
+
+Then install it via the krew as follows:
+
+```bash
+$ kubectl krew install realname-diff
 ```
 
 ## License
