@@ -14,7 +14,7 @@ builds:
       - amd64
 archives:
   - name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
-    format: zip
+    format: tar.gz
     files:
       - LICENSE
       - README.md
@@ -31,20 +31,3 @@ changelog:
       - '^test:'
 release:
   prerelease: auto
-krews:
-  - name: realname-diff
-    homepage: https://github.com/hhiroshell/kubectl-realname-diff
-    description: |
-      Normally, kubectl realname-diff works the same as kubectl diff, but if you set
-      "real name" as a label, local and live resources with the same label will be
-      compared.
-
-      This is especially beneficial if you use the Kustomize and enable the hash
-      suffixed ConfigMap/Secret name. In case of `kubectl diff`, local and live
-      resources with hash suffixed name are considered as irrelevant. So you will not
-      be able to get any results comparing them.
-
-      However, with realname-diff, you can compare the resources with hash suffixed
-      name by specifying the comparison target with "real name" labels.
-    short_description: Diffs live and local resources ignoring Kustomize hash-suffixes
-    skip_upload: true
