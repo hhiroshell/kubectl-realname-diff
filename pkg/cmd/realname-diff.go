@@ -207,8 +207,7 @@ func getWithRealName(info *resource.Info, name string) error {
 	}
 	list := res.(*unstructured.UnstructuredList)
 	if len(list.Items) > 1 {
-		realname := list.Items[0].GetLabels()[realNameLabel]
-		return fmt.Errorf("multiple objects have same realname label: realname=%s", realname)
+		return fmt.Errorf("multiple objects have same realname label: realname=%s", name)
 	}
 
 	if len(list.Items) == 1 {
