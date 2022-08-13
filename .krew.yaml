@@ -13,11 +13,23 @@ spec:
         os: linux
         arch: amd64
   - bin: kubectl-realname_diff
+    {{addURIAndSha "https://github.com/hhiroshell/kubectl-realname-diff/releases/download/{{ .TagName }}/kubectl-realname-diff-linux-arm64.tar.gz" .TagName }}
+    selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+  - bin: kubectl-realname_diff
     {{addURIAndSha "https://github.com/hhiroshell/kubectl-realname-diff/releases/download/{{ .TagName }}/kubectl-realname-diff-darwin-amd64.tar.gz" .TagName }}
     selector:
       matchLabels:
         os: darwin
         arch: amd64
+  - bin: kubectl-realname_diff
+    {{addURIAndSha "https://github.com/hhiroshell/kubectl-realname-diff/releases/download/{{ .TagName }}/kubectl-realname-diff-darwin-arm64.tar.gz" .TagName }}
+    selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
   shortDescription: Diffs live and local resources ignoring Kustomize hash-suffixes
   description: |
     Kubectl realname-diff works the same as kubectl diff, but if you set "real
