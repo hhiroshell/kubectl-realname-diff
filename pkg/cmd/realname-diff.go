@@ -74,6 +74,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 
 	configFlags.AddFlags(cmd.Flags())
 	cmd.Flags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
+	cmd.Flags().BoolVar(&options.showManagedFields, "show-managed-fields", options.showManagedFields, "If true, include managed fields in the diff.")
 	cmdutil.AddFilenameOptionFlags(cmd, &options.filenameOptions, "contains the configuration to diff")
 	cmdutil.AddServerSideApplyFlags(cmd)
 	cmdutil.AddFieldManagerFlagVar(cmd, &options.fieldManager, apply.FieldManagerClientSideApply)
@@ -100,14 +101,15 @@ func diffError(err error) exec.ExitError {
 type RealnameDiffOptions struct {
 	filenameOptions resource.FilenameOptions
 
-	serverSideApply bool
-	fieldManager    string
-	forceConflicts  bool
+	serverSideApply   bool
+	fieldManager      string
+	forceConflicts    bool
+	showManagedFields bool
 
 	selector         string
 	openAPISchema    openapi.Resources
 	dynamicClient    dynamic.Interface
-	dryRunVerifier   *resource.DryRunVerifier
+	dryRunVerifier   *resource.QueryParamVerifier
 	cmdNamespace     string
 	enforceNamespace bool
 
@@ -267,7 +269,7 @@ func (o *RealnameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Comma
 		return err
 	}
 
-	o.dryRunVerifier = resource.NewDryRunVerifier(o.dynamicClient, factory.OpenAPIGetter())
+	o.dryRunVerifier = resource.NewQueryParamVerifier(o.dynamicClient, factory.OpenAPIGetter(), resource.QueryParamDryRun)
 
 	o.cmdNamespace, o.enforceNamespace, err = factory.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
@@ -344,7 +346,7 @@ func (o *RealnameDiffOptions) Run() error {
 				},
 			}
 
-			err = differ.Diff(obj, printer)
+			err = differ.Diff(obj, printer, o.showManagedFields)
 			if !isConflict(err) {
 				break
 			}
@@ -354,6 +356,7 @@ func (o *RealnameDiffOptions) Run() error {
 
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
