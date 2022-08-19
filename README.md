@@ -43,7 +43,7 @@ Then, apply the manifests to your kubernetes cluster.
 
 ```bash
 # assume you have placed the kustomization.yaml in "./example" directory
-$ kustomize build -f ./example | kubectl apply -f -
+$ kustomize build ./example | kubectl apply -f -
 
 # you can get the ConfigMap with hash suffixed name.
 $ kubectl get configmap --show-labels
@@ -57,7 +57,7 @@ to diff the local ConfigMap and the live one.
 ```bash
 $ echo "# test" >> ./example/conf/nginx.conf
 
-$ kustomize build -f ./example | kubectl realname-diff -f -
+$ kustomize build ./example | kubectl realname-diff -f -
 ```
 
 You can see the diff result comparing contents in the ConfigMap. The local
@@ -100,7 +100,6 @@ diff -u -N /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/LIVE-116798495/v1.Co
      prunable: "true"
      realname-diff/realname: nginx-conf
 @@ -33,17 +31,13 @@
-     ...(snip managed fields)...
      manager: kubectl-client-side-apply
      operation: Update
 -    time: "2021-12-23T15:00:12Z"
@@ -113,7 +112,7 @@ diff -u -N /var/folders/2n/lgqgy6f151l5mw1x4dj_7ztw0000gn/T/LIVE-116798495/v1.Co
 +  uid: 0d69cf40-d201-47fe-bad2-8c3333ef0d07
 ```
 
-For a complete example, see the [example directory](./example). 
+For a complete example, see the [example directory](./example).
 
 ## Installation
 
