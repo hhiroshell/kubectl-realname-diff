@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -208,11 +209,11 @@ func getWithRealName(info *resource.Info, name string) error {
 		return err
 	}
 	list := res.(*unstructured.UnstructuredList)
-	if len(list.Items) > 1 {
-		return fmt.Errorf("multiple objects have same realname label: realname=%s", name)
-	}
+	slices.SortFunc(list.Items, func(i, j unstructured.Unstructured) int {
+		return j.GetCreationTimestamp().Compare(i.GetCreationTimestamp().Time)
+	})
 
-	if len(list.Items) == 1 {
+	if len(list.Items) >= 1 {
 		unstructured := list.Items[0]
 		info.Object = unstructured.DeepCopyObject()
 		info.ResourceVersion = unstructured.GetResourceVersion()
