@@ -14,6 +14,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/openapi3"
+	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	"k8s.io/kubectl/pkg/cmd/diff"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -107,14 +109,13 @@ type RealnameDiffOptions struct {
 	showManagedFields bool
 
 	selector         string
-	openAPISchema    openapi.Resources
+	openAPIGetter    openapi.OpenAPIResourcesGetter
+	openAPIV3Root    openapi3.Root
 	dynamicClient    dynamic.Interface
-	dryRunVerifier   *resource.QueryParamVerifier
 	cmdNamespace     string
 	enforceNamespace bool
-
-	builder     *resource.Builder
-	diffProgram *diff.DiffProgram
+	builder          *resource.Builder
+	diffProgram      *diff.DiffProgram
 }
 
 func NewRealnameDiffOptions(streams genericclioptions.IOStreams) *RealnameDiffOptions {
@@ -258,9 +259,14 @@ func (o *RealnameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Comma
 	}
 
 	if !o.serverSideApply {
-		o.openAPISchema, err = factory.OpenAPISchema()
-		if err != nil {
-			return err
+		o.openAPIGetter = factory
+		if !cmdutil.OpenAPIV3Patch.IsDisabled() {
+			openAPIV3Client, err := factory.OpenAPIV3Client()
+			if err == nil {
+				o.openAPIV3Root = openapi3.NewRoot(openAPIV3Client)
+			} else {
+				klog.V(4).Infof("warning: OpenAPI V3 Patch is enabled but is unable to be loaded. Will fall back to OpenAPI V2")
+			}
 		}
 	}
 
@@ -268,8 +274,6 @@ func (o *RealnameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Comma
 	if err != nil {
 		return err
 	}
-
-	o.dryRunVerifier = resource.NewQueryParamVerifier(o.dynamicClient, factory.OpenAPIGetter(), resource.QueryParamDryRun)
 
 	o.cmdNamespace, o.enforceNamespace, err = factory.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
@@ -305,10 +309,6 @@ func (o *RealnameDiffOptions) Run() error {
 			return err
 		}
 
-		if err := o.dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-			return err
-		}
-
 		local := info.Object.DeepCopyObject()
 
 		for i := 1; i <= maxRetries; i++ {
@@ -337,7 +337,8 @@ func (o *RealnameDiffOptions) Run() error {
 					LocalObj:        local,
 					Info:            info,
 					Encoder:         scheme.DefaultJSONEncoder(),
-					OpenAPI:         o.openAPISchema,
+					OpenAPIGetter:   o.openAPIGetter,
+					OpenAPIV3Root:   o.openAPIV3Root,
 					Force:           force,
 					ServerSideApply: o.serverSideApply,
 					FieldManager:    o.fieldManager,
