@@ -137,27 +137,31 @@ var _ diff.Object = &RealnameDiffInfoObject{}
 
 // Live Returns the live version of the object
 func (obj RealnameDiffInfoObject) Live() runtime.Object {
-	if !obj.nameWillBeChanged() {
+	if !obj.nameChanged() {
 		return obj.infoObj.Live()
 	}
 
+	// The original kubectl diff will never display the 'last-applied-configuration'
+	// annotation because the live and merged resources must have the same key/value
+	// for it.
+	// To follow this original behavior and to prevent the exposure of Secret resources
+	// through this annotation, it should be deleted.
 	unstructured := obj.infoObj.Live().(*unstructured.Unstructured)
-	if unstructured.GetKind() == "Secret" {
-		annotations := unstructured.GetAnnotations()
-		if _, ok := annotations["kubectl.kubernetes.io/last-applied-configuration"]; ok {
-			annotations["kubectl.kubernetes.io/last-applied-configuration"] = "***"
-		}
-		unstructured.SetAnnotations(annotations)
-	}
+	annotations := unstructured.GetAnnotations()
+	delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
+	unstructured.SetAnnotations(annotations)
+
 	return unstructured
 }
 
 // Merged returns the "merged" object, as it would look like if applied or created.
 func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
-	if !obj.nameWillBeChanged() {
+	if !obj.nameChanged() {
 		return obj.infoObj.Merged()
 	}
 
+	// Resources with a different name from the live resource will be created with
+	// the CREATE operation.
 	helper := resource.NewHelper(obj.infoObj.Info.Client, obj.infoObj.Info.Mapping).
 		DryRun(true).
 		WithFieldManager(obj.infoObj.FieldManager)
@@ -169,7 +173,10 @@ func (obj RealnameDiffInfoObject) Merged() (runtime.Object, error) {
 	)
 }
 
-func (obj RealnameDiffInfoObject) nameWillBeChanged() bool {
+// nameChanged function returns a boolean value indicating whether the local resource's
+// `metadata.name` differs from that of the live resource. This function is intended to
+// be used to determine whether to fall back to the original kubectl diff logic.
+func (obj RealnameDiffInfoObject) nameChanged() bool {
 	if obj.infoObj.Live() == nil {
 		return false
 	}
