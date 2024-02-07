@@ -6,8 +6,10 @@ resources:
 
 namespace: default
 
-commonLabels:
-  prunable: "true"
+labels:
+- includeSelectors: true
+  pairs:
+    prunable: "true"
 
 images:
 - name: nginx
