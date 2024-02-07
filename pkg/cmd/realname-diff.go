@@ -6,11 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
@@ -47,7 +45,15 @@ compared.`
 const (
 	maxRetries    = 4
 	realNameLabel = "realname-diff/realname"
+
+	targetSelectionStrategyError  = "error"
+	targetSelectionStrategyLatest = "latest"
 )
+
+var targetSelectionStrategies = map[string]struct{}{
+	targetSelectionStrategyError:  {},
+	targetSelectionStrategyLatest: {},
+}
 
 func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	options := NewRealnameDiffOptions(streams)
@@ -77,9 +83,11 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	configFlags.AddFlags(cmd.Flags())
 	cmd.Flags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVar(&options.showManagedFields, "show-managed-fields", options.showManagedFields, "If true, include managed fields in the diff.")
-	cmdutil.AddFilenameOptionFlags(cmd, &options.filenameOptions, "contains the configuration to diff")
+	cmdutil.AddFilenameOptionFlags(cmd, &options.filenameOptions, "Contains the configuration to diff")
 	cmdutil.AddServerSideApplyFlags(cmd)
 	cmdutil.AddFieldManagerFlagVar(cmd, &options.fieldManager, apply.FieldManagerClientSideApply)
+
+	cmd.Flags().StringVar(&options.targetSelectionStrategy, "target-selection-strategy", targetSelectionStrategyError, "Specifies the behavior when multiple diff targets are found. The value must be either \"error\" or \"latest\". In \"latest\", the selection is based on \"metadata.creationTimestamp\"")
 
 	return cmd
 }
@@ -116,6 +124,8 @@ type RealnameDiffOptions struct {
 	enforceNamespace bool
 	builder          *resource.Builder
 	diffProgram      *diff.DiffProgram
+
+	targetSelectionStrategy string
 }
 
 func NewRealnameDiffOptions(streams genericclioptions.IOStreams) *RealnameDiffOptions {
@@ -201,9 +211,9 @@ func realName(obj runtime.Object) string {
 	return ""
 }
 
-// getWithRealName retrieves the object from the "realname-diff/realname" label.
-// If the object is not found, it will try to retrieve it from the name.
-func getWithRealName(info *resource.Info, name string) error {
+// getWithRealName retrieves the object from the `realname-diff/realname` label.
+// If the object is not found, it will try to retrieve it from the `metadata.name`.
+func getWithRealName(info *resource.Info, name string, strategy string) error {
 	gvk := info.Object.GetObjectKind().GroupVersionKind()
 	res, err := resource.NewHelper(info.Client, info.Mapping).List(info.Namespace, info.ResourceVersion, &metav1.ListOptions{
 		TypeMeta: metav1.TypeMeta{
@@ -215,29 +225,40 @@ func getWithRealName(info *resource.Info, name string) error {
 	if err != nil {
 		return err
 	}
-	list := res.(*unstructured.UnstructuredList)
-	if len(list.Items) > 1 {
-		return fmt.Errorf("multiple objects have same realname label: realname=%s", name)
-	}
 
-	if len(list.Items) == 1 {
-		unstructured := list.Items[0]
-		info.Object = unstructured.DeepCopyObject()
-		info.ResourceVersion = unstructured.GetResourceVersion()
-	} else if len(list.Items) == 0 {
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, name)
-		if isNotFound(err) {
-			return errors.NewNotFound(schema.GroupResource{
-				Group:    gvk.Group,
-				Resource: gvk.Kind,
-			}, name)
+	list := res.(*unstructured.UnstructuredList)
+	var target *unstructured.Unstructured
+
+	len := len(list.Items)
+	switch {
+	case len > 1:
+		switch strategy {
+		case targetSelectionStrategyError:
+			return fmt.Errorf("multiple objects have same realname label: realname=%s", name)
+
+		case targetSelectionStrategyLatest:
+			var latest unstructured.Unstructured
+			for _, item := range list.Items {
+				if item.GetCreationTimestamp().After(latest.GetCreationTimestamp().Time) {
+					latest = item
+				}
+			}
+			target = &latest
 		}
-		info.Object = obj
-		info.ResourceVersion, err = meta.NewAccessor().ResourceVersion(obj)
+
+	case len == 1:
+		target = &list.Items[0]
+
+	case len == 0:
+		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, name)
 		if err != nil {
 			return err
 		}
+		target = obj.(*unstructured.Unstructured)
 	}
+
+	info.Object = target.DeepCopyObject()
+	info.ResourceVersion = target.GetResourceVersion()
 
 	return nil
 }
@@ -288,6 +309,11 @@ func (o *RealnameDiffOptions) Complete(factory cmdutil.Factory, cmd *cobra.Comma
 	}
 
 	o.builder = factory.NewBuilder()
+
+	if _, ok := targetSelectionStrategies[o.targetSelectionStrategy]; !ok {
+		return fmt.Errorf("--target-selection-strategy must be either \"error\" or \"latest\"")
+	}
+
 	return nil
 }
 
@@ -320,7 +346,7 @@ func (o *RealnameDiffOptions) Run() error {
 
 		for i := 1; i <= maxRetries; i++ {
 			if on := realName(local); len(on) > 0 {
-				err = getWithRealName(info, on)
+				err = getWithRealName(info, on, o.targetSelectionStrategy)
 			} else {
 				err = info.Get()
 			}
