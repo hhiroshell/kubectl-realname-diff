@@ -83,6 +83,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 	configFlags.AddFlags(cmd.Flags())
 	cmd.Flags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 	cmd.Flags().BoolVar(&options.showManagedFields, "show-managed-fields", options.showManagedFields, "If true, include managed fields in the diff.")
+	cmd.Flags().IntVar(&options.concurrency, "concurrency", 1, "Number of objects to process in parallel when diffing against the live version. Larger number = faster, but more memory, I/O and CPU over that shorter period of time.")
 	cmdutil.AddFilenameOptionFlags(cmd, &options.filenameOptions, "Contains the configuration to diff")
 	cmdutil.AddServerSideApplyFlags(cmd)
 	cmdutil.AddFieldManagerFlagVar(cmd, &options.fieldManager, apply.FieldManagerClientSideApply)
@@ -116,6 +117,7 @@ type RealnameDiffOptions struct {
 	forceConflicts    bool
 	showManagedFields bool
 
+	concurrency      int
 	selector         string
 	openAPIGetter    openapi.OpenAPIResourcesGetter
 	openAPIV3Root    openapi3.Root
@@ -328,6 +330,7 @@ func (o *RealnameDiffOptions) Run() error {
 
 	r := o.builder.
 		Unstructured().
+		VisitorConcurrency(o.concurrency).
 		NamespaceParam(o.cmdNamespace).DefaultNamespace().
 		FilenameParam(o.enforceNamespace, &o.filenameOptions).
 		LabelSelectorParam(o.selector).
