@@ -22,7 +22,7 @@ jobs:
       -
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.24.x
       -
         name: Ensure go.mod is already tidied
         run: go mod tidy && git diff -s --exit-code go.sum
@@ -51,7 +51,7 @@ jobs:
       -
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.24.x
       -
         uses: actions/cache@v5
         with:
@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: testbin
-          key: ${{ runner.os }}-envtest-1.29.0
+          key: ${{ runner.os }}-envtest-1.34.0
           restore-keys: |
             ${{ runner.os }}-envtest-
       -
