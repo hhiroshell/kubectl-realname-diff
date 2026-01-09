@@ -14,7 +14,7 @@ on:
       - '**.md'
 
 jobs:
-  run:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       -
@@ -42,3 +42,33 @@ jobs:
         with:
           install-go: false
           cache-key: ${{ runner.os }}-go-${{ hashFiles('**/*.go') }}
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        uses: actions/checkout@v4
+      -
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+      -
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      -
+        uses: actions/cache@v4
+        with:
+          path: testbin
+          key: ${{ runner.os }}-envtest-1.29.0
+          restore-keys: |
+            ${{ runner.os }}-envtest-
+      -
+        name: Setup envtest
+        run: make envtest
+      -
+        name: Run integration tests
+        run: make test-integration
