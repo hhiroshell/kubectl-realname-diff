@@ -33,7 +33,7 @@ compared.`
 
 	diffExample = `  # Make sure you have already labeled the resources with
   # "realname-diff/realname: [real name]". For a complete example, see:
-  # https://github.com/hhiroshell/kubectl-realname-diff/tree/main/example 
+  # https://github.com/hhiroshell/kubectl-realname-diff/tree/main/example
 
   # Diff resources included in the result of kustomize build
   kustomize build ./example | kubectl realname-diff -f -
@@ -239,10 +239,11 @@ func getWithRealName(info *resource.Info, name string, strategy string) error {
 			return fmt.Errorf("multiple objects have same realname label: realname=%s", name)
 
 		case targetSelectionStrategyLatest:
-			var latest unstructured.Unstructured
-			for _, item := range list.Items {
-				if item.GetCreationTimestamp().After(latest.GetCreationTimestamp().Time) {
-					latest = item
+			// Initialize to first item, then find the one with latest timestamp
+			latest := list.Items[0]
+			for i := 1; i < len; i++ {
+				if list.Items[i].GetCreationTimestamp().After(latest.GetCreationTimestamp().Time) {
+					latest = list.Items[i]
 				}
 			}
 			target = &latest
