@@ -15,3 +15,8 @@
 # vendor/
 
 dist/
+
+# Test binaries and artifacts
+testbin/
+bin/
+coverage.out

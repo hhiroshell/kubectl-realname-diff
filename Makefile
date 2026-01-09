@@ -2,6 +2,10 @@
 GO ?= go
 STATICCHECK ?= staticcheck
 DIST_DIR := dist
+TESTBIN_DIR := testbin
+ENVTEST = $(shell pwd)/bin/setup-envtest
+ENVTEST_K8S_VERSION = 1.29.0
+ENVTEST_ASSETS_DIR = $(TESTBIN_DIR)/k8s/$(ENVTEST_K8S_VERSION)-$(shell go env GOOS)-$(shell go env GOARCH)
 
 .PHONY: build
 build:
@@ -10,6 +14,23 @@ build:
 .PHONY: test
 test: vet fmt lint
 	$(GO) test ./...
+
+.PHONY: test-integration
+test-integration: envtest
+	KUBEBUILDER_ASSETS="$(shell pwd)/$(ENVTEST_ASSETS_DIR)" $(GO) test -tags=integration -v ./pkg/cmd/...
+
+.PHONY: test-all
+test-all: test test-integration
+
+.PHONY: envtest
+envtest: $(ENVTEST)
+	@echo "Setting up envtest binaries..."
+	@mkdir -p $(TESTBIN_DIR)
+	$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(TESTBIN_DIR) -p path
+
+$(ENVTEST):
+	@mkdir -p bin
+	GOBIN=$(shell pwd)/bin $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: vet
 vet:
@@ -25,4 +46,4 @@ lint:
 
 .PHONY: clean
 clean:
-	rm -rf $(DIST_DIR)
+	rm -rf $(DIST_DIR) $(TESTBIN_DIR) bin/
