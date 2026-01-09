@@ -4,6 +4,7 @@ STATICCHECK ?= staticcheck
 DIST_DIR := dist
 TESTBIN_DIR := testbin
 ENVTEST = $(shell pwd)/bin/setup-envtest
+SETUP_ENVTEST_VERSION ?= release-0.22
 ENVTEST_K8S_VERSION = 1.34.0
 ENVTEST_ASSETS_DIR = $(TESTBIN_DIR)/k8s/$(ENVTEST_K8S_VERSION)-$(shell go env GOOS)-$(shell go env GOARCH)
 
@@ -30,7 +31,7 @@ envtest: $(ENVTEST)
 
 $(ENVTEST):
 	@mkdir -p bin
-	GOBIN=$(shell pwd)/bin $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	GOBIN=$(shell pwd)/bin $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION)
 
 .PHONY: vet
 vet:
