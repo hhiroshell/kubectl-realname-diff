@@ -38,7 +38,7 @@ jobs:
       -
         run: "go vet ./..."
       -
-        uses: dominikh/staticcheck-action@v1.3.1
+        uses: dominikh/staticcheck-action@v1.4.0
         with:
           install-go: false
           cache-key: ${{ runner.os }}-go-${{ hashFiles('**/*.go') }}
