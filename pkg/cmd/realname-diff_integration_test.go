@@ -242,44 +242,23 @@ func assertResourceVersionCaptured(t *testing.T, info *resource.Info) {
 	}
 }
 
-// TestGetWithRealName_SingleMatch tests getWithRealName with a single matching resource
+// TestGetWithRealName_SingleMatch tests getWithRealName with a single matching ConfigMap
 func TestGetWithRealName_SingleMatch(t *testing.T) {
-	tests := []struct {
-		name         string
-		realname     string
-		resourceName string
-	}{
-		{
-			name:         "single ConfigMap with realname label",
-			realname:     "my-config",
-			resourceName: "my-config-abc123",
-		},
-		{
-			name:         "single Secret with realname label",
-			realname:     "my-secret",
-			resourceName: "my-secret-def456",
-		},
+	namespace := setupTestNamespace(t)
+
+	// Create ConfigMap in API server
+	createConfigMapWithRealname(t, namespace, "my-config-abc123", "my-config", time.Time{})
+
+	// Create Info and call getWithRealName
+	info := createResourceInfo(t, namespace, corev1.SchemeGroupVersion.WithKind("ConfigMap"))
+	err := getWithRealName(info, "my-config", targetSelectionStrategyError)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			namespace := setupTestNamespace(t)
-
-			// Create resource in API server
-			createConfigMapWithRealname(t, namespace, tt.resourceName, tt.realname, time.Time{})
-
-			// Create Info and call getWithRealName
-			info := createResourceInfo(t, namespace, corev1.SchemeGroupVersion.WithKind("ConfigMap"))
-			err := getWithRealName(info, tt.realname, targetSelectionStrategyError)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			assertResourceMatches(t, info, tt.resourceName, tt.realname)
-			assertResourceVersionCaptured(t, info)
-		})
-	}
+	assertResourceMatches(t, info, "my-config-abc123", "my-config")
+	assertResourceVersionCaptured(t, info)
 }
 
 // TestGetWithRealName_MultipleMatches tests getWithRealName with multiple matching resources
