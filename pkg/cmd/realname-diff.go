@@ -22,6 +22,8 @@ import (
 	"k8s.io/utils/exec"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"github.com/hhiroshell/kubectl-realname-diff/pkg/version"
 )
 
 var (
@@ -67,6 +69,7 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 		Short:                 "Diff live and local resources ignoring Kustomize hash-suffixes.",
 		Long:                  diffLong,
 		Example:               diffExample,
+		Version:               version.Version,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckDiffErr(options.Complete(factory, cmd))
 			cmdutil.CheckDiffErr(validateArgs(cmd, args))
@@ -79,6 +82,8 @@ func NewCmdRealnameDiff(streams genericclioptions.IOStreams) *cobra.Command {
 			}
 		},
 	}
+	cmd.SetVersionTemplate("Real Name Diff Version: {{.Version}}\n")
+	cmd.Flags().BoolP("version", "v", false, "Version for kubectl-realname-diff")
 
 	configFlags.AddFlags(cmd.Flags())
 	cmd.Flags().StringVarP(&options.selector, "selector", "l", options.selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")

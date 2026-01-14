@@ -7,10 +7,11 @@ ENVTEST = $(shell pwd)/bin/setup-envtest
 SETUP_ENVTEST_VERSION ?= release-0.22
 ENVTEST_K8S_VERSION = 1.34.0
 ENVTEST_ASSETS_DIR = $(TESTBIN_DIR)/k8s/$(ENVTEST_K8S_VERSION)-$(shell go env GOOS)-$(shell go env GOARCH)
+VERSION ?= dev
 
 .PHONY: build
 build:
-	$(GO) build -o $(DIST_DIR)/kubectl-realname_diff cmd/kubectl-realname_diff/main.go
+	$(GO) build -ldflags "-X github.com/hhiroshell/kubectl-realname-diff/pkg/version.Version=$(VERSION)" -o $(DIST_DIR)/kubectl-realname_diff cmd/kubectl-realname_diff/main.go
 
 .PHONY: test
 test: vet fmt lint

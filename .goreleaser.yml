@@ -8,6 +8,8 @@ builds:
     binary: kubectl-realname_diff
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/hhiroshell/kubectl-realname-diff/pkg/version.Version={{.Version}}
     goos:
       - linux
       - darwin
